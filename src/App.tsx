@@ -13,9 +13,11 @@ import {
   Plus,
   Minus,
   CheckCircle2,
-  Eraser
+  Eraser,
+  Download
 } from 'lucide-react';
 import { get, set } from 'idb-keyval';
+import { toPng } from 'html-to-image';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SudokuLogic } from './lib/sudoku';
@@ -32,7 +34,10 @@ console.log("App starting...");
 
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [savedGame, setSavedGame] = useState<GameState | null>(null);
+  const [showResumeScreen, setShowResumeScreen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<'normal' | 'draft' | 'chain'>('normal');
   const [chainType, setChainType] = useState<'strong' | 'weak'>('strong');
   const [chainStart, setChainStart] = useState<{ row: number; col: number; num?: number } | null>(null);
@@ -67,7 +72,8 @@ export default function App() {
         setIsInitializing(true);
         const saved = await get(STORAGE_KEY);
         if (saved) {
-          setGameState(saved);
+          setSavedGame(saved);
+          setShowResumeScreen(true);
         } else {
           startNewGame('Advanced');
         }
@@ -80,6 +86,18 @@ export default function App() {
     };
     loadGame();
   }, []);
+
+  const handleResume = () => {
+    if (savedGame) {
+      setGameState(savedGame);
+      setShowResumeScreen(false);
+    }
+  };
+
+  const handleStartNewFromResume = () => {
+    setShowResumeScreen(false);
+    startNewGame('Advanced');
+  };
 
   // Save game
   useEffect(() => {
@@ -204,6 +222,23 @@ export default function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const exportBoard = async () => {
+    if (!boardRef.current) return;
+    try {
+      const dataUrl = await toPng(boardRef.current, {
+        quality: 1,
+        pixelRatio: 3, // High resolution
+        backgroundColor: '#F5F5F0',
+      });
+      const link = document.createElement('a');
+      link.download = `sudoku-board-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error('Export error:', err);
+    }
+  };
+
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
@@ -214,7 +249,7 @@ export default function App() {
     );
   }
 
-  if (initError || !gameState) {
+  if (initError || (!gameState && !showResumeScreen)) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex flex-col items-center justify-center p-4 text-center">
         <p className="text-red-500 font-bold mb-4">{initError || "游戏加载失败"}</p>
@@ -224,6 +259,36 @@ export default function App() {
         >
           刷新页面
         </button>
+      </div>
+    );
+  }
+
+  if (showResumeScreen) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-black/5 max-w-sm w-full">
+          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <RotateCcw size={32} />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">发现进行中的游戏</h2>
+          <p className="text-black/50 text-sm mb-8">
+            您上次的游戏进度已保存，是否继续？
+          </p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleResume}
+              className="w-full bg-black text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition-colors shadow-lg active:scale-95"
+            >
+              继续游戏
+            </button>
+            <button
+              onClick={handleStartNewFromResume}
+              className="w-full bg-black/5 text-black/60 py-4 rounded-2xl font-bold hover:bg-black/10 transition-colors active:scale-95"
+            >
+              开始新游戏
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -290,6 +355,11 @@ export default function App() {
               onClick={handleHintRequest}
               icon={isHintLoading ? <div className="animate-spin"><RotateCcw size={18} /></div> : <Lightbulb size={18} />}
               label="提示"
+            />
+            <ToolButton 
+              onClick={exportBoard}
+              icon={<Download size={18} />}
+              label="导出"
             />
             <div className="relative">
               <ToolButton 
@@ -421,7 +491,10 @@ export default function App() {
           </svg>
 
           {/* Sudoku Grid */}
-          <div className="grid grid-cols-9 border-[1.5px] border-black bg-white shadow-2xl rounded-sm overflow-hidden w-full aspect-square">
+          <div 
+            ref={boardRef}
+            className="grid grid-cols-9 border-[1.5px] border-black bg-white shadow-2xl rounded-sm overflow-hidden w-full aspect-square"
+          >
             {gameState.grid.map((row, ri) => (
               row.map((val, ci) => {
                 const isInitial = gameState.initialGrid[ri][ci] !== null;
