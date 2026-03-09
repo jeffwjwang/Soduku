@@ -36,6 +36,7 @@ export default function App() {
   const [mode, setMode] = useState<'normal' | 'draft' | 'chain'>('normal');
   const [chainType, setChainType] = useState<'strong' | 'weak'>('strong');
   const [chainStart, setChainStart] = useState<{ row: number; col: number; num?: number } | null>(null);
+  const [showCandidatePicker, setShowCandidatePicker] = useState(false);
   const [showDifficultyMenu, setShowDifficultyMenu] = useState(false);
   const [hint, setHint] = useState<{ message: string; cells: [number, number][] } | null>(null);
   const [isHintLoading, setIsHintLoading] = useState(false);
@@ -118,9 +119,39 @@ export default function App() {
 
   const handleCellClick = (row: number, col: number) => {
     if (mode === 'chain') {
+      if (!gameState) return;
+      // Only allow empty cells with candidates
+      if (gameState.grid[row][col] !== null) return;
+      const hasCandidates = gameState.notes[row][col].some(v => v);
+      if (!hasCandidates) return;
+
       setSelectedCell({ row, col });
+      setShowCandidatePicker(true);
     } else {
       setSelectedCell({ row, col });
+    }
+  };
+
+  const handleCandidateSelect = (num: number) => {
+    if (!selectedCell || !gameState) return;
+    const { row, col } = selectedCell;
+
+    if (!chainStart) {
+      setChainStart({ row, col, num });
+      setShowCandidatePicker(false);
+      setSelectedCell(null);
+    } else {
+      // Create chain
+      const newChain: Chain = {
+        id: Math.random().toString(36).substr(2, 9),
+        start: chainStart,
+        end: { row, col, num },
+        type: chainType
+      };
+      setGameState(prev => prev ? { ...prev, chains: [...prev.chains, newChain] } : null);
+      setChainStart(null);
+      setShowCandidatePicker(false);
+      setSelectedCell(null);
     }
   };
 
@@ -129,24 +160,7 @@ export default function App() {
     const { row, col } = selectedCell;
     
     if (mode === 'chain') {
-      if (num === null) {
-        setSelectedCell(null);
-        return;
-      }
-      if (!chainStart) {
-        setChainStart({ row, col, num });
-        setSelectedCell(null);
-      } else {
-        const newChain: Chain = {
-          id: Math.random().toString(36).substr(2, 9),
-          start: chainStart,
-          end: { row, col, num },
-          type: chainType
-        };
-        setGameState(prev => prev ? { ...prev, chains: [...prev.chains, newChain] } : null);
-        setChainStart(null);
-        setSelectedCell(null);
-      }
+      // In chain mode, we use handleCandidateSelect instead
       return;
     }
 
@@ -346,6 +360,28 @@ export default function App() {
         <div className="relative w-full max-w-[500px] flex flex-col items-center">
           {/* SVG Overlay for Chains */}
           <svg className="absolute inset-0 pointer-events-none z-20 w-full h-full">
+            <defs>
+              <marker
+                id="arrowhead-strong"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+              </marker>
+              <marker
+                id="arrowhead-weak"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+              </marker>
+            </defs>
             {gameState.chains.map(chain => {
               const getPos = (row: number, col: number, num?: number) => {
                 const cellW = 100 / 9;
@@ -377,6 +413,7 @@ export default function App() {
                   stroke={chain.type === 'strong' ? '#10b981' : '#ef4444'}
                   strokeWidth="2"
                   strokeDasharray={chain.type === 'weak' ? "4 2" : "0"}
+                  markerEnd={`url(#arrowhead-${chain.type})`}
                   className="opacity-80"
                 />
               );
@@ -463,7 +500,7 @@ export default function App() {
 
           {/* 数字选择器弹窗 */}
           <AnimatePresence>
-            {selectedCell && (
+            {selectedCell && !showCandidatePicker && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -497,6 +534,57 @@ export default function App() {
                     title="擦除"
                   >
                     <Eraser size={20} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 候选数放大镜 (推理链模式) */}
+          <AnimatePresence>
+            {showCandidatePicker && selectedCell && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                className="absolute left-1/2 -translate-x-1/2 bottom-[-16px] translate-y-full z-[60] bg-white/95 backdrop-blur-xl p-6 rounded-[3rem] shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-black/10 w-max"
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-black/40">
+                    {chainStart ? "选择链尾候选数" : "选择链首候选数"}
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => {
+                      const isAvailable = gameState.notes[selectedCell.row][selectedCell.col][num];
+                      const isStart = chainStart && chainStart.row === selectedCell.row && chainStart.col === selectedCell.col && chainStart.num === num;
+                      
+                      return (
+                        <button
+                          key={num}
+                          disabled={!isAvailable}
+                          onClick={() => handleCandidateSelect(num)}
+                          className={cn(
+                            "w-14 h-14 flex items-center justify-center rounded-2xl transition-all duration-200 font-bold text-xl border shadow-sm active:scale-90",
+                            isAvailable 
+                              ? isStart 
+                                ? "bg-emerald-500 text-white border-emerald-600" 
+                                : "bg-white text-black hover:bg-black hover:text-white border-black/5"
+                              : "bg-black/5 text-black/10 border-transparent cursor-not-allowed"
+                          )}
+                        >
+                          {isAvailable ? num : ''}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setShowCandidatePicker(false);
+                      setSelectedCell(null);
+                    }}
+                    className="mt-2 text-[10px] uppercase font-bold text-black/40 hover:text-black transition-colors"
+                  >
+                    取消
                   </button>
                 </div>
               </motion.div>
