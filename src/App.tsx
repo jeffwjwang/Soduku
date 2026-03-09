@@ -28,6 +28,8 @@ function cn(...inputs: ClassValue[]) {
 
 const STORAGE_KEY = 'sudoku_game_state';
 
+console.log("App starting...");
+
 export default function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
@@ -55,13 +57,24 @@ export default function App() {
       setIsHintLoading(false);
     }
   };
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
+
   useEffect(() => {
     const loadGame = async () => {
-      const saved = await get(STORAGE_KEY);
-      if (saved) {
-        setGameState(saved);
-      } else {
-        startNewGame('Advanced');
+      try {
+        setIsInitializing(true);
+        const saved = await get(STORAGE_KEY);
+        if (saved) {
+          setGameState(saved);
+        } else {
+          startNewGame('Advanced');
+        }
+      } catch (error) {
+        console.error("Initialization error:", error);
+        setInitError("无法初始化游戏，请刷新页面重试。");
+      } finally {
+        setIsInitializing(false);
       }
     };
     loadGame();
@@ -177,7 +190,29 @@ export default function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!gameState) return null;
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
+        <div className="animate-spin text-emerald-600">
+          <RotateCcw size={40} />
+        </div>
+      </div>
+    );
+  }
+
+  if (initError || !gameState) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex flex-col items-center justify-center p-4 text-center">
+        <p className="text-red-500 font-bold mb-4">{initError || "游戏加载失败"}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="bg-black text-white px-6 py-2 rounded-xl font-bold"
+        >
+          刷新页面
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F5F5F0] text-[#141414] font-sans selection:bg-emerald-200">
