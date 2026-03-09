@@ -392,6 +392,29 @@ export default function App() {
                 const isChainStart = chainStart?.row === ri && chainStart?.col === ci;
                 const isHinted = hint?.cells.some(([r, c]) => r === ri && c === ci);
                 
+                // Highlight logic
+                let isHighlighted = false;
+                if (selectedCell) {
+                  const selectedVal = gameState.grid[selectedCell.row][selectedCell.col];
+                  if (selectedVal !== null) {
+                    // Find all cells with the same value
+                    for (let r = 0; r < 9; r++) {
+                      for (let c = 0; c < 9; c++) {
+                        if (gameState.grid[r][c] === selectedVal) {
+                          if (ri === r || ci === c) {
+                            isHighlighted = true;
+                            break;
+                          }
+                        }
+                      }
+                      if (isHighlighted) break;
+                    }
+                  } else {
+                    // If empty cell selected, just highlight its row and column
+                    isHighlighted = ri === selectedCell.row || ci === selectedCell.col;
+                  }
+                }
+
                 return (
                   <div
                     key={`${ri}-${ci}`}
@@ -400,9 +423,10 @@ export default function App() {
                       "relative flex items-center justify-center text-2xl sm:text-3xl cursor-pointer transition-all duration-200 border-[0.5px] border-black/10 aspect-square",
                       (ci + 1) % 3 === 0 && ci !== 8 && "border-r-[1.5px] border-r-black",
                       (ri + 1) % 3 === 0 && ri !== 8 && "border-b-[1.5px] border-b-black",
-                      isSelected && "bg-emerald-50 z-10 scale-[1.02] shadow-lg",
+                      isSelected && "bg-emerald-100 z-10 scale-[1.02] shadow-lg",
+                      !isSelected && isHighlighted && "bg-blue-50/80",
                       isChainStart && "ring-2 ring-inset ring-emerald-400 bg-emerald-50/50",
-                      !isSelected && !isChainStart && "hover:bg-black/5",
+                      !isSelected && !isHighlighted && !isChainStart && "hover:bg-black/5",
                       isHinted && "bg-amber-100/50",
                       isInitial ? "font-bold text-black" : "font-light text-emerald-600"
                     )}
