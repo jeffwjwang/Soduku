@@ -396,12 +396,18 @@ export default function App() {
                 let isHighlighted = false;
                 if (selectedCell) {
                   const selectedVal = gameState.grid[selectedCell.row][selectedCell.col];
+                  
+                  const isInSameBox = (r1: number, c1: number, r2: number, c2: number) => {
+                    return Math.floor(r1 / 3) === Math.floor(r2 / 3) && 
+                           Math.floor(c1 / 3) === Math.floor(c2 / 3);
+                  };
+
                   if (selectedVal !== null) {
                     // Find all cells with the same value
                     for (let r = 0; r < 9; r++) {
                       for (let c = 0; c < 9; c++) {
                         if (gameState.grid[r][c] === selectedVal) {
-                          if (ri === r || ci === c) {
+                          if (ri === r || ci === c || isInSameBox(ri, ci, r, c)) {
                             isHighlighted = true;
                             break;
                           }
@@ -410,8 +416,10 @@ export default function App() {
                       if (isHighlighted) break;
                     }
                   } else {
-                    // If empty cell selected, just highlight its row and column
-                    isHighlighted = ri === selectedCell.row || ci === selectedCell.col;
+                    // If empty cell selected, highlight its row, column, and box
+                    isHighlighted = ri === selectedCell.row || 
+                                    ci === selectedCell.col || 
+                                    isInSameBox(ri, ci, selectedCell.row, selectedCell.col);
                   }
                 }
 
