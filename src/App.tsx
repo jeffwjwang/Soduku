@@ -218,37 +218,132 @@ export default function App() {
     <div className="min-h-screen bg-[#F5F5F0] text-[#141414] font-sans selection:bg-emerald-200">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center z-50 bg-white/80 backdrop-blur-md border-b border-black/5">
-        <div className="flex items-center gap-4">
-          <div className="bg-black text-white p-2 rounded-lg">
-            <Trophy size={20} />
+        <div className="flex items-center gap-3">
+          <div className="bg-black text-white p-1.5 rounded-lg">
+            <Trophy size={18} />
           </div>
           <div>
-            <h1 className="text-sm font-bold uppercase tracking-widest">禅意数独</h1>
-            <p className="text-[10px] text-black/50 font-mono">{gameState.difficulty === 'Advanced' ? '高级' : gameState.difficulty === 'Expert' ? '专家' : '地狱'} 难度</p>
+            <h1 className="text-xs font-bold uppercase tracking-widest">禅意数独</h1>
+            <p className="text-[9px] text-black/50 font-mono">{gameState.difficulty === 'Advanced' ? '高级' : gameState.difficulty === 'Expert' ? '专家' : '地狱'} 难度</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase tracking-tighter text-black/40 font-bold">时间</span>
-            <div className="flex items-center gap-1 font-mono text-sm">
-              <Timer size={14} />
+            <span className="text-[9px] uppercase tracking-tighter text-black/40 font-bold">时间</span>
+            <div className="flex items-center gap-1 font-mono text-xs">
+              <Timer size={12} />
               {formatTime(gameState.time)}
             </div>
           </div>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] uppercase tracking-tighter text-black/40 font-bold">提示</span>
-            <div className="flex items-center gap-1 font-mono text-sm">
-              <Lightbulb size={14} />
+            <span className="text-[9px] uppercase tracking-tighter text-black/40 font-bold">提示</span>
+            <div className="flex items-center gap-1 font-mono text-xs">
+              <Lightbulb size={12} />
               {gameState.hintsUsed}
             </div>
           </div>
         </div>
       </header>
 
+      {/* Floating Tools at Top */}
+      <div className="fixed top-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-40 w-full px-4">
+        <div className="flex items-center gap-2 w-full max-w-md">
+          <div className="flex-1 bg-white/90 backdrop-blur-xl p-1.5 rounded-2xl shadow-xl border border-black/5 flex items-center justify-around">
+            <ToolButton 
+              active={mode === 'normal'} 
+              onClick={() => setMode('normal')}
+              icon={<CheckCircle2 size={18} />}
+              label="填数"
+            />
+            <ToolButton 
+              active={mode === 'draft'} 
+              onClick={() => setMode('draft')}
+              icon={<Pencil size={18} />}
+              label="草稿"
+            />
+            <div className="w-[1px] h-6 bg-black/5" />
+            <ToolButton 
+              active={mode === 'chain'} 
+              onClick={() => setMode('chain')}
+              icon={<Link2 size={18} />}
+              label="推理链"
+            />
+          </div>
+
+          <div className="bg-white/90 backdrop-blur-xl p-1.5 rounded-2xl shadow-xl border border-black/5 flex items-center gap-1">
+            <ToolButton 
+              onClick={handleHintRequest}
+              icon={isHintLoading ? <div className="animate-spin"><RotateCcw size={18} /></div> : <Lightbulb size={18} />}
+              label="提示"
+            />
+            <div className="relative">
+              <ToolButton 
+                onClick={() => setShowDifficultyMenu(!showDifficultyMenu)}
+                icon={<Settings2 size={18} />}
+                label="新游戏"
+              />
+              <AnimatePresence>
+                {showDifficultyMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-2xl border border-black/5 p-2 min-w-[100px] z-[60]"
+                  >
+                    {(['Advanced', 'Expert', 'Hell'] as Difficulty[]).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => startNewGame(d)}
+                        className="w-full text-left px-3 py-2 text-[10px] font-bold hover:bg-emerald-50 rounded-lg transition-colors"
+                      >
+                        {d === 'Advanced' ? '高级' : d === 'Expert' ? '专家' : '地狱'}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+
+        {mode === 'chain' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex gap-2 bg-white/90 backdrop-blur-xl p-1.5 rounded-xl shadow-lg border border-black/5"
+          >
+            <button
+              onClick={() => setChainType('strong')}
+              className={cn(
+                "px-3 py-1 rounded-lg text-[10px] font-bold transition-all",
+                chainType === 'strong' ? "bg-emerald-500 text-white" : "bg-black/5 text-black/40"
+              )}
+            >
+              强链
+            </button>
+            <button
+              onClick={() => setChainType('weak')}
+              className={cn(
+                "px-3 py-1 rounded-lg text-[10px] font-bold transition-all",
+                chainType === 'weak' ? "bg-red-500 text-white" : "bg-black/5 text-black/40"
+              )}
+            >
+              弱链
+            </button>
+            <button
+              onClick={undoChain}
+              className="p-1.5 rounded-lg bg-black/5 text-black/40 hover:bg-black/10"
+            >
+              <RotateCcw size={14} />
+            </button>
+          </motion.div>
+        )}
+      </div>
+
       {/* Main Board Area */}
-      <main className="pt-24 pb-32 px-4 flex flex-col items-center justify-center min-h-screen">
-        <div className="relative group">
+      <main className="pt-48 pb-12 px-2 flex flex-col items-center justify-start min-h-screen overflow-x-hidden">
+        <div className="relative w-full max-w-[500px] flex flex-col items-center">
           {/* SVG Overlay for Chains */}
           <svg className="absolute inset-0 pointer-events-none z-20 w-full h-full">
             {gameState.chains.map(chain => {
@@ -289,7 +384,7 @@ export default function App() {
           </svg>
 
           {/* Sudoku Grid */}
-          <div className="grid grid-cols-9 border-2 border-black bg-white shadow-2xl rounded-sm overflow-hidden w-full max-w-[500px] aspect-square">
+          <div className="grid grid-cols-9 border-[1.5px] border-black bg-white shadow-2xl rounded-sm overflow-hidden w-full aspect-square">
             {gameState.grid.map((row, ri) => (
               row.map((val, ci) => {
                 const isInitial = gameState.initialGrid[ri][ci] !== null;
@@ -302,9 +397,9 @@ export default function App() {
                     key={`${ri}-${ci}`}
                     onClick={() => handleCellClick(ri, ci)}
                     className={cn(
-                      "relative flex items-center justify-center text-xl sm:text-2xl cursor-pointer transition-all duration-200 border-[0.5px] border-black/10 aspect-square",
-                      (ci + 1) % 3 === 0 && ci !== 8 && "border-r-2 border-r-black",
-                      (ri + 1) % 3 === 0 && ri !== 8 && "border-b-2 border-b-black",
+                      "relative flex items-center justify-center text-2xl sm:text-3xl cursor-pointer transition-all duration-200 border-[0.5px] border-black/10 aspect-square",
+                      (ci + 1) % 3 === 0 && ci !== 8 && "border-r-[1.5px] border-r-black",
+                      (ri + 1) % 3 === 0 && ri !== 8 && "border-b-[1.5px] border-b-black",
                       isSelected && "bg-emerald-50 z-10 scale-[1.02] shadow-lg",
                       isChainStart && "ring-2 ring-inset ring-emerald-400 bg-emerald-50/50",
                       !isSelected && !isChainStart && "hover:bg-black/5",
@@ -320,9 +415,9 @@ export default function App() {
                         {val}
                       </motion.span>
                     ) : (
-                      <div className="grid grid-cols-3 gap-[1px] w-full h-full p-[2px]">
+                      <div className="grid grid-cols-3 gap-[1px] w-full h-full p-[1px] sm:p-[2px]">
                         {Array.from({ length: 9 }).map((_, i) => (
-                          <div key={i} className="flex items-center justify-center text-[8px] sm:text-[10px] text-black/30 leading-none">
+                          <div key={i} className="flex items-center justify-center text-[9px] sm:text-[11px] text-black/30 leading-none font-mono">
                             {gameState.notes[ri][ci][i + 1] ? i + 1 : ''}
                           </div>
                         ))}
@@ -334,31 +429,42 @@ export default function App() {
             ))}
           </div>
 
-          {/* Number Picker Pop-up */}
+          {/* 数字选择器弹窗 */}
           <AnimatePresence>
             {selectedCell && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                className="absolute left-1/2 -translate-x-1/2 -bottom-24 z-50 bg-white p-2 rounded-xl shadow-2xl border border-black/10 flex gap-1"
+                className="absolute left-1/2 -translate-x-1/2 bottom-[-12px] translate-y-full z-50 bg-white/95 backdrop-blur-xl p-4 rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.15)] border border-black/5 flex flex-col gap-3 w-max"
               >
-                <div className="grid grid-cols-5 gap-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map(num => (
                     <button
                       key={num}
                       onClick={() => handleNumberSelect(num)}
-                      className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-emerald-500 hover:text-white transition-colors font-bold border border-black/5"
+                      className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white hover:bg-emerald-500 hover:text-white transition-all duration-200 font-bold text-lg border border-black/5 shadow-sm active:scale-90"
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  {[6, 7, 8, 9].map(num => (
+                    <button
+                      key={num}
+                      onClick={() => handleNumberSelect(num)}
+                      className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white hover:bg-emerald-500 hover:text-white transition-all duration-200 font-bold text-lg border border-black/5 shadow-sm active:scale-90"
                     >
                       {num}
                     </button>
                   ))}
                   <button
                     onClick={() => handleNumberSelect(null)}
-                    className="w-10 h-10 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-500 hover:text-white transition-colors border border-red-100"
+                    className="w-12 h-12 flex items-center justify-center rounded-2xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200 border border-red-100 shadow-sm active:scale-90"
                     title="擦除"
                   >
-                    <Eraser size={16} />
+                    <Eraser size={20} />
                   </button>
                 </div>
               </motion.div>
@@ -386,94 +492,6 @@ export default function App() {
           )}
         </AnimatePresence>
       </main>
-
-      {/* Floating Tools */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50">
-        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-black/5 flex items-center gap-1">
-          <ToolButton 
-            active={mode === 'normal'} 
-            onClick={() => setMode('normal')}
-            icon={<CheckCircle2 size={20} />}
-            label="填数"
-          />
-          <ToolButton 
-            active={mode === 'draft'} 
-            onClick={() => setMode('draft')}
-            icon={<Pencil size={20} />}
-            label="草稿"
-          />
-          <div className="w-[1px] h-8 bg-black/5 mx-1" />
-          <ToolButton 
-            active={mode === 'chain'} 
-            onClick={() => setMode('chain')}
-            icon={<Link2 size={20} />}
-            label="推理链"
-          />
-          {mode === 'chain' && (
-            <div className="flex gap-1 ml-1">
-              <button
-                onClick={() => setChainType('strong')}
-                className={cn(
-                  "px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                  chainType === 'strong' ? "bg-emerald-500 text-white" : "bg-black/5 text-black/40"
-                )}
-              >
-                强链
-              </button>
-              <button
-                onClick={() => setChainType('weak')}
-                className={cn(
-                  "px-2 py-1 rounded-md text-[10px] font-bold transition-all",
-                  chainType === 'weak' ? "bg-red-500 text-white" : "bg-black/5 text-black/40"
-                )}
-              >
-                弱链
-              </button>
-              <button
-                onClick={undoChain}
-                className="p-1 rounded-md bg-black/5 text-black/40 hover:bg-black/10"
-              >
-                <RotateCcw size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-2xl border border-black/5 flex items-center gap-1">
-          <ToolButton 
-            onClick={handleHintRequest}
-            icon={isHintLoading ? <div className="animate-spin"><RotateCcw size={20} /></div> : <Lightbulb size={20} />}
-            label="提示"
-          />
-          <div className="relative">
-            <ToolButton 
-              onClick={() => setShowDifficultyMenu(!showDifficultyMenu)}
-              icon={<Settings2 size={20} />}
-              label="新游戏"
-            />
-            <AnimatePresence>
-              {showDifficultyMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-2xl border border-black/5 p-2 min-w-[120px]"
-                >
-                  {(['Advanced', 'Expert', 'Hell'] as Difficulty[]).map(d => (
-                    <button
-                      key={d}
-                      onClick={() => startNewGame(d)}
-                      className="w-full text-left px-4 py-2 text-xs font-bold hover:bg-emerald-50 rounded-lg transition-colors"
-                    >
-                      {d === 'Advanced' ? '高级' : d === 'Expert' ? '专家' : '地狱'}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
 
       {/* Win Modal */}
       <AnimatePresence>
@@ -524,12 +542,12 @@ function ToolButton({ active, onClick, icon, label }: { active?: boolean; onClic
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all duration-300",
+        "flex flex-col items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl transition-all duration-300",
         active ? "bg-black text-white shadow-lg" : "text-black/40 hover:bg-black/5 hover:text-black"
       )}
     >
       {icon}
-      <span className="text-[8px] uppercase font-bold mt-1 tracking-tighter">{label}</span>
+      <span className="text-[7px] sm:text-[8px] uppercase font-bold mt-1 tracking-tighter">{label}</span>
     </button>
   );
 }
