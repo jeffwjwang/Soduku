@@ -17,7 +17,7 @@ import {
   Download
 } from 'lucide-react';
 import { get, set } from 'idb-keyval';
-import { toPng } from 'html-to-image';
+import * as htmlToImage from 'html-to-image';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { SudokuLogic } from './lib/sudoku';
@@ -225,7 +225,7 @@ export default function App() {
   const exportBoard = async () => {
     if (!boardRef.current) return;
     try {
-      const dataUrl = await toPng(boardRef.current, {
+      const dataUrl = await htmlToImage.toPng(boardRef.current, {
         quality: 1,
         pixelRatio: 3, // High resolution
         backgroundColor: '#F5F5F0',
